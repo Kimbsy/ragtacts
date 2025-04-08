@@ -10,6 +10,7 @@
        
    - params: A map of parameters to pass to the LLM.
      - `:type`: The type of LLM to use. Defaults to :open-ai.
+     - `:api-key`: The API key to use for the LLM.
      - `max-tokens`: The maximum number of tokens that can be generated in the chat completion.
      - `temperature`: What sampling temperature to use, between 0 and 2.
      - `top-p`: An alternative to sampling with temperature, called nucleus sampling, 

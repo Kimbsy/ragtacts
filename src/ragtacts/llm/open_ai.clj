@@ -44,13 +44,14 @@
   (let [args (first (:arglists (meta tool)))]
     (apply tool (map #(get (:arguments function) (keyword %)) args))))
 
-(defn- chat-completion [{:keys [model msgs tools]}]
+(defn- chat-completion [{:keys [model msgs tools api-key]}]
   (let [params {:model (or model "gpt-4o")
                 :messages (map ->open-ai-message msgs)}]
     (-> (openai/create-chat-completion (if (seq tools)
                                          (assoc params :tools (map tool->function tools))
                                          params)
-                                       {:throw-exceptions? false
+                                       {:api-key api-key
+                                        :throw-exceptions? false
                                         :trace (fn [request response]
                                                 ;; (println "Request:")
                                                 ;; (println (:body request))
@@ -71,9 +72,10 @@
                                (json/parse-string arguments true))))
                 %)))
 
-(defn- ask-open-ai [q {:keys [model tools as max-tokens temperature top-p]}]
+(defn- ask-open-ai [q {:keys [model tools as max-tokens temperature top-p api-key]}]
   (let [msgs (question->msgs q)
-        result (chat-completion {:model model
+        result (chat-completion {:api-key api-key
+                                 :model model
                                  :msgs msgs
                                  :tools tools
                                  :max_tokens max-tokens
