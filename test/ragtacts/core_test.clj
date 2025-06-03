@@ -35,21 +35,21 @@
   (with-redefs [openai/create-chat-completion ask-mock]
     (testing "Simple ask test"
       (let [msgs (ask "Hello!")]
-        (is (=  (first msgs) {:user "Hello!"}))
+        (is (= {:user "Hello!"} (first msgs)))
         (is (string? (:ai (second msgs))))))
 
     (testing "Continued ask test"
       (let [msgs (-> (ask "Hello!")
                      (conj "How are you?")
                      ask)]
-        (is (= (map ffirst msgs) [:user :ai :user :ai]))
+        (is (= [:user :ai :user :ai] (map ffirst msgs)))
         (is (string? (:ai (last msgs))))))
 
     (testing "Ask with messages"
       (let [msgs (ask [{:user "Hello!"}
                        {:ai "How are you?"}
                        {:user "My name is Ragtacts."}])]
-        (is (= (map ffirst msgs) [:user :ai :user :ai]))
+        (is (= [:user :ai :user :ai] (map ffirst msgs)))
         (is (string? (:ai (second msgs))))))
 
     (testing "Ask with tools"
@@ -62,25 +62,24 @@
 (deftest prompt-test
   (testing "Simple prompt test"
     (let [prompt (prompt "Hello {name}!" {:name "World"})]
-      (is (= prompt "Hello World!")))))
+      (is (= "Hello World!" prompt)))))
 
 
 (deftest vector-store-test
   (testing "Simple search test"
     (let [db (vector-store)]
       (add db ["A" "B"])
-      (is (= (search db "A") ["A" "B"]))))
+      (is (= ["A" "B"] (search db "A")))))
 
   (testing "Search with metadata"
     (let [db (vector-store)]
       (add db [{:text "A" :metadata {:animal "dog"}}
                {:text "B" :metadata {:animal "cat"}}])
-      (is (= (search db "A" {:metadata {:animal "dog"}}) ["A"]))))
+      (is (= ["A"] (search db "A" {:metadata {:animal "dog"}})))))
 
   (testing "Seach multiple vector stores"
     (let [db1 (vector-store)
           db2 (vector-store)]
       (add db1 ["A" "B"])
       (add db2 ["A" "B"])
-      (is (= (search [db1 db2] "A") ["A" "A" "B" "B"])))))
-      
+      (is (= ["A" "A" "B" "B"] (search [db1 db2] "A"))))))
