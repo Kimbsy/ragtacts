@@ -227,6 +227,22 @@ retrieved can be changed using the `top-k` option value.
 ;;  model.")
 ```
 
+You can search multiple vector databases by supplying them in a vector to the `search` function
+
+```clojure
+(let [db1 (vector-store)
+      db2 (vector-store)]
+  (add db1 ["The new data outside of the LLM's original training data set is called external data."
+            "What Is RAG?"
+            "The next question may be—what if the external data becomes stale?"])
+  (add db2 ["Retrieval-Augmented Generation (RAG) is the process of optimizing the output of a large language model."
+            "The next step is to perform a relevancy search."
+            "Recursive summarization as Context Summarization techniques provide a condensed view of documents"])
+  (search [db1 db2] "Tell me about RAG"))
+;; ("Retrieval-Augmented Generation (RAG) is the process of optimizing the output of a large language model."
+;; "What Is ...")
+```
+
 You can include additional information along with the documents to be stored as vectors, and filter 
 your search results using this additional information.
 
@@ -245,6 +261,25 @@ your search results using this additional information.
 The `"What Is RAG?"` was most similar to `"Tell me about RAG"`, but since the search was filtered 
 to only include documents with `metadata` where the `topic` is `"Tutorial"`, `"What Is RAG?"` 
 did not appear in the results.
+
+You can specify a conditional filter by providing a vector containing the operator and the value. The available operators are `>`, `>=`, `<`, `<=`, `not`, `in` and `not-in`.
+
+``` clojure
+(let [db (vector-store)]
+      (add db [{:text "Bird" :metadata {:legs 2}}
+               {:text "Cat" :metadata {:legs 4}}
+               {:text "Octopus" :metadata {:legs 8}}])
+      [(search db "anything" {:metadata {:legs 8}})
+       (search db "anything" {:metadata {:legs [:< 8]}})
+       (search db "anything" {:metadata {:legs [:<= 8]}})
+       (search db "anything" {:metadata {:legs [:> 4]}})
+       (search db "anything" {:metadata {:legs [:>= 4]}})
+       (search db "anything" {:metadata {:legs [:not 8]}})
+       (search db "anything" {:metadata {:legs [:in (range 3)]}})
+       (search db "anything" {:metadata {:legs [:not-in #{3 4 5}]}})])
+;; [("Octopus") ("Cat" "Bird") ("Cat" "Bird" "Octopus") ("Octopus") ("Cat" "Octopus") ("Cat" "Bird")
+;; ("Bird") ("Bird" "Octopus")]
+```
 
 If you add the `{:raw? true}` option to the `search` function, you can retrieve the stored vector 
 values and metadata in the result.

@@ -77,10 +77,31 @@
                {:text "B" :metadata {:animal "cat"}}])
       (is (= (search db "A" {:metadata {:animal "dog"}}) ["A"]))))
 
+  (testing "Search with conditional filtering"
+    (let [db (vector-store)]
+      (add db [{:text "Bird" :metadata {:legs 2}}
+               {:text "Cat" :metadata {:legs 4}}
+               {:text "Octopus" :metadata {:legs 8}}])
+      (is (= ["Octopus"]
+             (search db "anything" {:metadata {:legs 8}})))
+      (is (= (set ["Bird" "Cat"])
+             (set (search db "anything" {:metadata {:legs [:< 8]}}))))
+      (is (= (set ["Bird" "Cat" "Octopus"])
+             (set (search db "anything" {:metadata {:legs [:<= 8]}}))))
+      (is (= (set ["Octopus"])
+             (set (search db "anything" {:metadata {:legs [:> 4]}}))))
+      (is (= (set ["Cat" "Octopus"])
+             (set (search db "anything" {:metadata {:legs [:>= 4]}}))))
+      (is (= (set ["Bird" "Cat"])
+             (set (search db "anything" {:metadata {:legs [:not 8]}}))))
+      (is (= (set ["Bird"])
+             (set (search db "anything" {:metadata {:legs [:in (range 3)]}}))))
+      (is (= (set ["Bird" "Octopus"])
+             (set (search db "anything" {:metadata {:legs [:not-in #{3 4 5}]}}))))))
+
   (testing "Seach multiple vector stores"
     (let [db1 (vector-store)
           db2 (vector-store)]
       (add db1 ["A" "B"])
       (add db2 ["A" "B"])
       (is (= (search [db1 db2] "A") ["A" "A" "B" "B"])))))
-      
