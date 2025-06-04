@@ -16,4 +16,12 @@
   (is (= "{x}"
          (f-string "{{a}}" {:a "x"})))
   (is (= "{{{x} {y}}}"
-         (f-string "{{{{a}} {{b}}}}" {:a "x" :b "y"}))))
+         (f-string "{{{{a}} {{b}}}}" {:a "x" :b "y"})))
+  (is (= "{:foo bar}"
+         (f-string "{:foo <x>}" {:x "bar"
+                                 :tag-open "<"
+                                 :tag-close ">"})))
+  (is (= "{:foo bar}"
+         (f-string "{:foo {{x}}}" {:x "bar"
+                                   :tag-open "{{"
+                                   :tag-close "}}"}))))

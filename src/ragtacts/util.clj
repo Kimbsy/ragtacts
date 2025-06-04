@@ -49,23 +49,41 @@
    (f-string \"Hello, {name}!\" {:name \"world\"})
    ;; => \"Hello, world!\"
    ```
+
+   Specify custom template tag delimeters with `:tag-open` and `:tag-close`
+
+   Example:
+   ```clojure
+   (f-string \"{:foo {{x}}}\"
+             {:x \"bar\"
+              :tag-open \"{{\"
+              :tag-close \"}}\"})
+   ;; => \"{:foo bar}\"
+   ```
    "
-  [s ctx]
+  [s
+   {:keys [tag-open tag-close]
+    :or {tag-open "{"
+         tag-close "}"}
+    :as ctx}]
   (let [get-value (fn [k]
                     (if-let [v (get ctx (keyword k))]
                       v
-                      (throw (ex-info (str "key not found: " k) {:key k}))))]
+                      (throw (ex-info (str "key not found: " k) {:key k}))))
+        n-open (count tag-open)
+        n-close (count tag-close)]
     (loop [s s
            result ""
            k nil]
-      (if-let [c (first s)]
-        (cond
-          (and (= c \{) k) (recur (rest s) (str result c) "")
-          (= c \{) (recur (rest s) (str result) "")
-          (and (= c \}) k) (recur (rest s) (str result (get-value (str/trim k))) nil)
-          k (recur (rest s) result (str k c))
-          :else (recur (rest s) (str result c) nil))
-        result))))
+      (let [[c & _ :as cs] (take n-open s)]
+        (if (seq cs)
+          (cond
+            (and (= cs (seq tag-open)) k) (recur (drop n-open s) (apply str result cs) "")
+            (= cs (seq tag-open)) (recur (drop n-open s) (str result) "")
+            (and (= cs (seq tag-close)) k) (recur (drop n-close s) (str result (get-value (str/trim k))) nil)
+            k (recur (rest s) result (str k c))
+            :else (recur (rest s) (str result c) nil))
+          result)))))
 
 (comment
   ;;
