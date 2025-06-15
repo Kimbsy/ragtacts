@@ -44,9 +44,24 @@
   (when metadata
     (reduce
      (fn [filter [k v]]
-       (if filter
-         (.and filter (.isEqualTo (MetadataFilterBuilder. (name k)) v))
-         (.isEqualTo (MetadataFilterBuilder. (name k)) v)))
+       (let [is-equal-to (memfn isEqualTo value)]
+         (if (coll? v)
+           (let [[op v] v
+                 method (case op
+                          :< (memfn isLessThan value)
+                          :<= (memfn isLessThanOrEqualTo value)
+                          :> (memfn isGreaterThan value)
+                          :>= (memfn isGreaterThanOrEqualTo value)
+                          :not (memfn isNotEqualTo value)
+                          :in (memfn isIn values)
+                          :not-in (memfn isNotIn values)
+                          is-equal-to)]
+             (if filter
+               (.and filter (method (MetadataFilterBuilder. (name k)) v))
+               (method (MetadataFilterBuilder. (name k)) v)))
+           (if filter
+             (.and filter (is-equal-to (MetadataFilterBuilder. (name k))) v)
+             (is-equal-to (MetadataFilterBuilder. (name k)) v)))))
      nil
      metadata)))
 
