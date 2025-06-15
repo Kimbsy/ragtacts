@@ -354,22 +354,22 @@ the content on a web page or in a folder is updated. This function allows you to
 in the vector database synchronized with the changing data.
 
 ```clojure
-(def web-wather
+(def web-watcher
   (web/watch {:url "https://aws.amazon.com/what-is/retrieval-augmented-generation/"
               :interval 1000}
               (fn [change-log]
                 ;; {:type :create :text "..."}
                 (println change-log))))
 
-(web/stop-watch web-wather)
+(web/stop-watch web-watcher)
 
 ;; WIP
-(def folder-wather
+(def folder-watcher
   (doc/watch {:path "~/papers"}
               (fn [change-log]
                 (println change-log))))
 
-(doc/stop-watch folder-wather)
+(doc/stop-watch folder-watcher)
 ```
 
 ## Using Ragtacts RAG Playground
