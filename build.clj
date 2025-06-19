@@ -12,7 +12,7 @@
 (def main-cls (string/join "." (filter some? [(name lib) "main"])))
 (def target-dir "target")
 (def class-dir (str target-dir "/" "classes"))
-(def uber-file (format "%s/%s-standalone.jar" target-dir (name lib)))
+(def uber-file (format "%s/%s-%s.jar" target-dir lib version))
 (def basis (b/create-basis {:project "deps.edn"}))
 
 (defn test "Run all the tests." [opts]
@@ -96,4 +96,5 @@
 (defn all [args]
   (clean nil)
   (prep nil)
-  (uber args))
+  (uber args)
+  (install args))

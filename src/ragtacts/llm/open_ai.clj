@@ -44,7 +44,23 @@
   (let [args (first (:arglists (meta tool)))]
     (apply tool (map #(get (:arguments function) (keyword %)) args))))
 
-(defn- chat-completion [{:keys [model msgs tools api-key]}]
+(defn- chat-completion-streaming [{:keys [model msgs tools api-key stream]}]
+  (let [params {:model (or model "gpt-4o")
+                :messages (map ->open-ai-message msgs)
+                :stream stream}]
+    (openai/create-chat-completion params
+                                   {:api-key api-key
+                                    :throw-exceptions? false
+                                    :trace (fn [request response]
+                                             ;; (println "Request:")
+                                             ;; (println (:body request))
+                                             ;; (println)
+                                             ;; (println "Response:")
+                                             ;; (println (:body response))
+                                             ;; (log/debug request)
+                                             )})))
+
+(defn- chat-completion [{:keys [model msgs tools api-key stream]}]
   (let [params {:model (or model "gpt-4o")
                 :messages (map ->open-ai-message msgs)}]
     (-> (openai/create-chat-completion (if (seq tools)
@@ -72,41 +88,55 @@
                                (json/parse-string arguments true))))
                 %)))
 
-(defn- ask-open-ai [q {:keys [model tools as max-tokens temperature top-p api-key]}]
-  (let [msgs (question->msgs q)
-        result (chat-completion {:api-key api-key
-                                 :model model
-                                 :msgs msgs
-                                 :tools tools
-                                 :max_tokens max-tokens
-                                 :top_p top-p
-                                 :temperature temperature})]
-    (if (seq tools)
-      (let [parsed-result (parse-arguments result)
-            fn-results (map (fn [{:keys [id function]}]
-                              (let [tool (select-tool-by-name tools function)]
-                                {:id id
-                                 :function function
-                                 :result (when tool
-                                           (apply-fn tool function))}))
-                            (:tool_calls parsed-result))]
-        (conj (vec msgs)
-              {:ai
-               (if (= :values as)
-                 (map (fn [{:keys [function result]}]
-                        {(keyword (:name function)) result}) fn-results)
-                 (:content
-                  (chat-completion
-                   {:model model
-                    :msgs (concat msgs
-                                  [{:tool-calls (-> result :tool_calls)}]
-                                  (map
-                                   (fn [{:keys [id result]}]
-                                     {:tool (json/generate-string result)
-                                      :tool-call-id id})
-                                   fn-results)
-                                  [(last msgs)])})))}))
-      (conj (vec msgs) {:ai (:content result)}))))
+(defn- ask-open-ai-streaming [q {:keys [model tools as max-tokens temperature top-p api-key stream]}]
+  (let [msgs (question->msgs q)]
+    (chat-completion-streaming {:api-key api-key
+                                :model model
+                                :msgs msgs
+                                :tools tools
+                                :max_tokens max-tokens
+                                :top_p top-p
+                                :temperature temperature
+                                :stream stream})))
+
+(defn- ask-open-ai [q {:keys [model tools as max-tokens temperature top-p api-key stream] :as params}]
+  (if stream
+    (ask-open-ai-streaming q params)
+    (let [msgs (question->msgs q)
+          result (chat-completion {:api-key api-key
+                                   :model model
+                                   :msgs msgs
+                                   :tools tools
+                                   :max_tokens max-tokens
+                                   :top_p top-p
+                                   :temperature temperature})]
+      (if (seq tools)
+        (let [parsed-result (parse-arguments result)
+              fn-results (map (fn [{:keys [id function]}]
+                                (let [tool (select-tool-by-name tools function)]
+                                  {:id id
+                                   :function function
+                                   :result (when tool
+                                             (apply-fn tool function))}))
+                              (:tool_calls parsed-result))]
+          (conj (vec msgs)
+                {:ai
+                 (if (= :values as)
+                   (map (fn [{:keys [function result]}]
+                          {(keyword (:name function)) result}) fn-results)
+                   (:content
+                    (chat-completion
+                     {:model model
+                      :msgs (concat msgs
+                                    [{:tool-calls (-> result :tool_calls)}]
+                                    (map
+                                     (fn [{:keys [id result]}]
+                                       {:tool (json/generate-string result)
+                                        :tool-call-id id})
+                                     fn-results)
+                                    [(last msgs)])
+                      :stream stream})))}))
+        (conj (vec msgs) {:ai (:content result)})))))
 
 (defmethod ask :open-ai [q params]
   (ask-open-ai q params))
@@ -152,4 +182,3 @@
 
   ;;
   )
-
